@@ -2,6 +2,7 @@ import { AppLink } from "../components/AppLink";
 import { usePageActive } from "../hooks/usePageActive";
 
 export function Index () {
+    console.log('index run')
     const active = usePageActive()
     return <div>
         <h1>Index</h1>

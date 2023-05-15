@@ -49,9 +49,10 @@ export const AppProvider = ({
         routes,
         location
     ])
-    return <AppContext.Provider value={context}>
+
+    return useMemo(() => <AppContext.Provider value={context}>
         {children}
-    </AppContext.Provider>
+    </AppContext.Provider>, [children, context])
 }
 
 export const AppOutlet = () => {
@@ -61,15 +62,17 @@ export const AppOutlet = () => {
 
     const childRoutes = useMemo(() => ctx.routes.slice(1), [ctx])
 
-    if (ctx.inAppContext) {
-        if (componentToRender) {
-            return <AppProvider active={ctx.active} routes={childRoutes} location={ctx.location}>
-                {componentToRender}
-            </AppProvider>
+    return useMemo(() => {
+        if (ctx.inAppContext) {
+            if (componentToRender) {
+                return <AppProvider active={ctx.active} routes={childRoutes} location={ctx.location}>
+                    {componentToRender}
+                </AppProvider>
+            } else {
+                return null
+            }
         } else {
-            return null
+            return <Outlet />
         }
-    } else {
-        return <Outlet />
-    }
+    }, [childRoutes, componentToRender, ctx.active, ctx.inAppContext, ctx.location])
 }
