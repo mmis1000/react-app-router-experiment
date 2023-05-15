@@ -1,15 +1,15 @@
-import { Location, matchRoutes, useLocation, useNavigate } from "react-router-dom";
+import { Location, RouteObject, matchRoutes, useLocation, useNavigate } from "react-router-dom";
 import { useLayoutEffect, useRef, useState } from 'react'
 import { routes as routeMap } from "./routes";
 import { ReactElement } from "react";
-import { Fragment } from "react";
-import { PAGE_STATE_MARKER } from "./utils/route";
+import { useMemo } from "react";
+import { AppProvider } from "./components/AppProvider";
 
 export function Layout () {
     const currentLocation = useLocation()
     const currentLiveHistoryIndex: number | undefined = currentLocation.state?.index
 
-    const routes = matchRoutes(routeMap, currentLocation)
+    const routes = useMemo(() => matchRoutes(routeMap, currentLocation) ?? [], [currentLocation])
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
     const currentLiveRoute = routes?.[1]!.route.element as ReactElement
 
@@ -25,6 +25,9 @@ export function Layout () {
     interface StackFrame {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         state: { [k: string]: any },
+        location: ReturnType<typeof useLocation>,
+        routes: NonNullable<ReturnType<typeof matchRoutes<RouteObject>>>,
+        key: string
         component: ReactElement
     }
 
@@ -63,7 +66,10 @@ export function Layout () {
                 const stack = [
                     {
                         state: currentLocation.state,
-                        component: currentLiveRoute
+                        component: currentLiveRoute,
+                        routes: routes.slice(1),
+                        location: currentLocation,
+                        key: String(currentLiveHistoryIndex)
                     }
                 ]
                 setPageStack(stack)
@@ -73,7 +79,10 @@ export function Layout () {
                 const patchedStack = renderedStack.current.slice(0, renderedStack.current.length - 1).concat([
                     {
                         state: currentLocation.state,
-                        component: currentLiveRoute
+                        component: currentLiveRoute,
+                        routes: routes.slice(1),
+                        location: currentLocation,
+                        key: String(currentLiveHistoryIndex)
                     }
                 ])
                 setPageStack(patchedStack)
@@ -85,7 +94,10 @@ export function Layout () {
             const patchedStack = renderedStack.current!.concat([
                 {
                     state: currentLocation.state,
-                    component: currentLiveRoute
+                    component: currentLiveRoute,
+                    routes: routes.slice(1),
+                    location: currentLocation,
+                    key: String(currentLiveHistoryIndex)
                 }
             ])
             setPageStack(patchedStack)
@@ -98,7 +110,10 @@ export function Layout () {
                 const initialStack = [
                     {
                         state: currentLocation.state,
-                        component: currentLiveRoute
+                        component: currentLiveRoute,
+                        routes: routes.slice(1),
+                        location: currentLocation,
+                        key: String(currentLiveHistoryIndex)
                     }
                 ]
                 setPageStack(initialStack)
@@ -110,28 +125,20 @@ export function Layout () {
             renderedStack.current = patchedStack
         }
         lastRenderedIndex.current = currentLiveHistoryIndex
-    }, [currentLiveHistoryIndex, currentLiveRoute, currentLocation, navigate])
+    }, [currentLiveHistoryIndex, currentLiveRoute, currentLocation, navigate, routes])
 
-    console.log(renderedStack)
     return <>
-        <div id="detail">
-            {
-                pageStack?.map((frame, index) => {
-                    const testFor = frame.component.props.state
-                    if (testFor === PAGE_STATE_MARKER) {
-                        const patched = {
-                            ...frame.component,
-                            props: {
-                                ...frame.component.props,
-                                state: frame.state
-                            }
-                        }
-                        return <Fragment key={index}>{patched}</Fragment>
-                    } else {
-                        return <Fragment key={index}>{frame.component}</Fragment>
-                    }
-                })
-            }
-        </div>
+        {
+            pageStack?.map((frame, index, arr) => {
+                return <AppProvider
+                    key={index}
+                    active={index === arr.length - 1}
+                    routes={frame.routes}
+                    location={frame.location}
+                >
+                    {frame.component}
+                </AppProvider>
+            })
+        }
     </>
 }
